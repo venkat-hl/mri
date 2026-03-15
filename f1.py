@@ -174,50 +174,66 @@ def generate_orthogonal_slices(file_path):
 # ✅ Route for front.html (Runs Model for Tumor Detection)
 @app.post('/detect_tumor')
 async def detect_tumor(file: UploadFile = File(...)):
+    print(f"Received detect_tumor request for file: {file.filename}")
     if not file:
         return JSONResponse({'error': 'No file uploaded'}, status_code=400)
 
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        
+        content = await file.read()
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
 
-    print(f"File received for model processing: {file_path}")
+        print(f"File saved to: {file_path}")
 
-    # Process NIfTI file using the model
-    slices = process_nii(file_path)
+        # Process NIfTI file using the model
+        slices = process_nii(file_path)
 
-    if slices:
-        return JSONResponse({'slices': slices})
-    else:
-        return JSONResponse({'error': 'Failed to process file'}, status_code=500)
+        if slices:
+            print(f"Processing successful, generated {len(slices)} slices")
+            return JSONResponse({'slices': slices})
+        else:
+            print("Processing failed (process_nii returned None)")
+            return JSONResponse({'error': 'Failed to process file'}, status_code=500)
+    except Exception as e:
+        print(f"Error in detect_tumor: {e}")
+        return JSONResponse({'error': str(e)}, status_code=500)
 
 # ✅ Route for advanced.html (No Model, Just Upload)
 @app.post('/upload_nii')
 async def upload_nii(file: UploadFile = File(...)):
+    print(f"Received upload_nii request for file: {file.filename}")
     if not file:
         return JSONResponse({'error': 'No file uploaded'}, status_code=400)
 
-    filename = secure_filename(file.filename)
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    try:
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        
+        content = await file.read()
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
 
-    print(f"File received for 3D viewing: {file_path}")
-    
-    # Generate orthogonal slices for advanced viewer
-    slice_info = generate_orthogonal_slices(file_path)
-    
-    if slice_info:
-        return JSONResponse({
-            'message': 'File uploaded successfully', 
-            'file_path': f"/uploads/{filename}",
-            'slice_info': slice_info
-        })
-    else:
-        return JSONResponse({'error': 'Failed to process file'}, status_code=500)
+        print(f"File saved to: {file_path}")
+        
+        # Generate orthogonal slices for advanced viewer
+        slice_info = generate_orthogonal_slices(file_path)
+        
+        if slice_info:
+            print("Orthogonal slices generated successfully")
+            return JSONResponse({
+                'message': 'File uploaded successfully', 
+                'file_path': f"/uploads/{filename}",
+                'slice_info': slice_info
+            })
+        else:
+            print("Failed to generate orthogonal slices")
+            return JSONResponse({'error': 'Failed to process file'}, status_code=500)
+    except Exception as e:
+        print(f"Error in upload_nii: {e}")
+        return JSONResponse({'error': str(e)}, status_code=500)
 
 # ✅ New endpoint to get specific slices
 @app.get('/get_slice/{axis}/{index}')
