@@ -1,0 +1,28 @@
+# Binary files
+*.pdf
+*.pptx
+*.h5
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Project specific
+uploads/*
+!uploads/.gitkeep
+static/outputs/*
+!static/outputs/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+.qodo/
+.gemini/
