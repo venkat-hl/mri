@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroScan | Precision Brain Tumor Detection</title>
+    <title>BrainTumor AI | Project Epoch</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -196,7 +196,7 @@
 
 <nav class="navbar">
     <div class="container d-flex justify-content-between align-items-center">
-        <a class="navbar-brand" href="#"><i class="bi bi-cpu-fill me-2"></i>NEUROSCAN</a>
+        <a class="navbar-brand" href="#"><i class="bi bi-cpu-fill me-2"></i>BRAINTUMOR AI</a>
         <a href="/advanced" class="btn btn-outline-light btn-sm px-4">Engine v2.0 Beta</a>
     </div>
 </nav>
@@ -210,13 +210,13 @@
         <div class="analysis-card">
             <h4 class="mb-4">Scan Analysis</h4>
             <form id="upload-form" enctype="multipart/form-data">
-                <div class="drop-zone" id="drop-zone">
+                <label class="drop-zone" id="drop-zone" for="file-input">
                     <i class="bi bi-cloud-arrow-up upload-icon"></i>
                     <h5 class="mb-2">Drop NIfTI file here</h5>
                     <p class="text-dim small mb-0">or click to browse from your computer</p>
                     <p id="file-name" class="mt-3 fw-bold text-primary" style="display:none;"></p>
-                    <input type="file" id="file-input" name="file" accept=".nii">
-                </div>
+                    <input type="file" id="file-input" name="file" accept=".nii,.nii.gz">
+                </label>
                 
                 <div class="loader" id="loader">
                     <div class="spinner-border text-primary" role="status"></div>
@@ -249,7 +249,7 @@
 
 <footer class="footer">
     <div class="container">
-        <p>&copy; 2026 NeuroScan Medical Systems. For research purposes only.</p>
+        <p>&copy; 2026 BrainTumor AI Medical Systems. For research purposes only.</p>
     </div>
 </footer>
 
@@ -260,7 +260,7 @@
         const fileInput = $('#file-input');
         const fileName = $('#file-name');
 
-        dropZone.click(() => fileInput.click());
+        // fileInput.click is handled by the label 'for' attribute natively
 
         fileInput.change(function() {
             if (this.files.length) {
@@ -330,7 +330,7 @@
             slices.forEach((slice, index) => {
                 grid.append(`
                     <div class="slice-card">
-                        <img src="${slice}" alt="Tumor Slice ${index + 1}">
+                        <img src="${slice.overlay}" alt="Tumor Slice ${index + 1}">
                         <div class="slice-label">Detection Instance #${index + 1}</div>
                     </div>
                 `);

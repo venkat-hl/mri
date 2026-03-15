@@ -20,6 +20,7 @@ uploads/*
 !uploads/.gitkeep
 static/outputs/*
 !static/outputs/.gitkeep
+3D_MRI_Brain_tumor_segmentation____U_NET.ipynb
 
 # IDEs
 .vscode/

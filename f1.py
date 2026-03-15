@@ -180,6 +180,9 @@ async def detect_tumor(file: UploadFile = File(...)):
 
     try:
         filename = secure_filename(file.filename)
+        if not filename:
+            filename = "uploaded_scan.nii" # Fallback if secure_filename results in empty string
+            
         file_path = os.path.join(UPLOAD_FOLDER, filename)
         
         content = await file.read()
