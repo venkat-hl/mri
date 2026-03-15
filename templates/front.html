@@ -1,181 +1,447 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FLAIR MRI Tumor Detection</title>
-
+    <title>NeuroScan | Advanced Brain Tumor Detection</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <style>
+        :root {
+            --bg-color: #0b0e14;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --primary-glow: #00d2ff;
+            --secondary-glow: #3a7bd5;
+            --accent-color: #00f2fe;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+        }
+
         body {
-            background-color: #121212;
-            color: white;
-            font-family: 'Arial', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            background: radial-gradient(circle at top right, rgba(58, 123, 213, 0.1), transparent),
+                        radial-gradient(circle at bottom left, rgba(0, 210, 255, 0.05), transparent);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: rgba(11, 14, 20, 0.8);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-section {
+            padding: 80px 0;
             text-align: center;
         }
 
-        .container {
-            margin-top: 20px;
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
         }
 
-        .card {
-            padding: 20px;
-            border-radius: 10px;
-            background: #1e1e1e;
-            box-shadow: 0px 4px 10px rgba(255, 255, 255, 0.1);
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto 3rem auto;
         }
 
-        h1 {
-            color: #007bff;
-            margin-bottom: 20px;
+        .hero-image-container {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 210, 255, 0.2);
         }
 
-        #result {
-            font-size: 1.5rem;
-            margin-top: 10px;
-            font-weight: bold;
-            color: yellow;
+        .hero-image {
+            width: 100%;
+            display: block;
         }
 
-        #image-container {
+        .main-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            margin-top: -50px;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .upload-area {
+            border: 2px dashed var(--glass-border);
+            border-radius: 16px;
+            padding: 3rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-glow);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-glow);
+            margin-bottom: 1rem;
+        }
+
+        #file-input {
             display: none;
-            margin-top: 20px;
         }
 
-
-
-
-        .slider-container {
-            margin-top: 10px;
+        .btn-scan {
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.8rem 2.5rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0, 210, 255, 0.2);
         }
 
-        .image-row {
+        .btn-scan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(0, 210, 255, 0.3);
+            color: white;
+        }
+
+        #result-status {
+            font-size: 1.1rem;
+            margin-top: 1.5rem;
+            font-weight: 600;
+        }
+
+        .viewer-section {
+            display: none;
+            margin-top: 4rem;
+            padding-bottom: 100px;
+        }
+
+        .slice-explorer {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
+        }
+
+        .display-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .slice-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .slice-card h5 {
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .slice-card img {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-slider {
+            width: 100%;
+            background: transparent;
+            -webkit-appearance: none;
+            margin: 1.5rem 0;
+        }
+
+        .custom-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: var(--glass-border);
+            border-radius: 3px;
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: var(--primary-glow);
+            margin-top: -7px;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .advanced-link-card {
+            margin-top: 3rem;
+            background: linear-gradient(45deg, rgba(58, 123, 213, 0.1), rgba(0, 210, 255, 0.1));
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2rem;
             display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .image-row img {
-            max-width: 80%;
-            /* Increased size */
-            border: 2px solid white;
-        }
-
-        /* Keep Advanced button always visible */
-        .advanced-btn-container {
-            margin-top: 20px;
-            display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: space-between;
         }
 
-        .advanced-btn {
-            margin-left: 20px;
-            /* Align with Overlayed Predicted Mask */
+        .footer {
+            border-top: 1px solid var(--glass-border);
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
         }
+
+        /* Micro-animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
     </style>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-
 <body>
 
+<nav class="navbar">
     <div class="container">
-        <h1>FLAIR MRI Tumor Detection</h1>
-
-        <div class="card">
-            <h3>Upload a FLAIR MRI Scan (.nii)</h3>
-            <form id="upload-form" enctype="multipart/form-data">
-                <input type="file" class="form-control" id="file-input" name="file" accept=".nii">
-                <button type="submit" class="btn btn-primary mt-3">Upload & Analyze</button>
-            </form>
-            <p id="result"></p>
-        </div>
-
-        <div id="image-container">
-            <h3>Select Slice</h3>
-            <div class="slider-container">
-                <input type="range" id="slice-slider" min="0" max="0" value="0">
-                <p>Slice: <span id="slice-number">0</span></p>
-            </div>
-
-            <div class="image-row">
-                <div>
-                    <h4>FLAIR MRI Slice</h4>
-                    <img id="flair-image" src="" alt="FLAIR MRI Slice">
-                </div>
-                <div>
-                    <h4>Overlayed Predicted Mask</h4>
-                    <img id="overlay-image" src="" alt="Overlayed Mask">
-                </div>
-                <div>
-                    <h4>Predicted Mask Only</h4>
-                    <img id="mask-image" src="" alt="Predicted Mask">
-                </div>
-            </div>
-        </div>
-
-        <div class="advanced-btn-container">
-            <a href="/advanced" class="btn btn-secondary mt-3 advanced-btn">Go to Advanced 3D Viewer</a>
+        <a class="navbar-brand" href="#">
+            <i class="bi bi-cpu-fill me-2"></i>NEUROSCAN
+        </a>
+        <div class="d-flex align-items-center">
+            <span class="badge bg-primary rounded-pill px-3 py-2">v2.0 Beta</span>
         </div>
     </div>
+</nav>
 
-    <script>
-        let slices = [];
+<div class="container">
+    <section class="hero-section">
+        <h1 class="hero-title animate-fade-in">Precision Brain Tumor Detection</h1>
+        <p class="hero-subtitle animate-fade-in delay-1">
+            Leveraging advanced U-Net architectures to provide rapid and accurate segmentation of glioma regions in multimodal MRI scans.
+        </p>
+        
+        <div class="hero-image-container animate-fade-in delay-2">
+            <img src="/static/img/hero.png" alt="Brain Visualization" class="hero-image">
+        </div>
+    </section>
 
-        $("#upload-form").submit(function (event) {
-            event.preventDefault();
-            let formData = new FormData();
-            formData.append("file", $("#file-input")[0].files[0]);
+    <div class="main-card animate-fade-in delay-2">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold">Scan Analysis</h2>
+            <p class="text-muted">Upload your FLAIR MRI scan (.nii) to begin the automated detection process.</p>
+        </div>
 
-            $("#result").text("Processing... Please wait.").css("color", "orange");
+        <form id="upload-form">
+            <div class="upload-area" id="drop-zone">
+                <i class="bi bi-cloud-arrow-up-fill upload-icon"></i>
+                <h4 class="fw-semibold">Drop NIfTI file here</h4>
+                <p class="text-muted">or click to browse from your computer</p>
+                <input type="file" id="file-input" name="file" accept=".nii">
+                <div id="file-name-display" class="mt-3 text-primary fw-bold" style="display:none;"></div>
+            </div>
+            
+            <div class="text-center mt-5">
+                <button type="submit" class="btn btn-scan btn-lg">
+                    <i class="bi bi-play-circle-fill me-2"></i>Upload & Analyze Scan
+                </button>
+                <div id="result-status"></div>
+            </div>
+        </form>
+    </div>
 
-            $.ajax({
-                url: "/detect_tumor",
-                type: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function (response) {
-                    if (response.error) {
-                        $("#result").text("Error: " + response.error).css("color", "red");
-                        return;
-                    }
+    <section id="viewer-section" class="viewer-section">
+        <div class="slice-explorer">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="fw-bold mb-0">Exploration Suite</h3>
+                <div class="badge bg-secondary px-3 py-2">
+                    Slice: <span id="slice-number" class="fw-bold">0</span>
+                </div>
+            </div>
 
-                    slices = response.slices;
-                    if (slices.length > 0) {
-                        $("#slice-slider").attr("max", slices.length - 1).val(0);
-                        updateSlice(0);
-                        $("#image-container").show();
-                        $("#result").text("Tumor detection complete! Use the slider to explore slices.").css("color", "green");
-                    } else {
-                        $("#result").text("No slices found. Please try another file.").css("color", "red");
-                    }
-                },
-                error: function (xhr, status, error) {
-                    console.error("Error:", error);
-                    $("#result").text("Error in processing. Please try again.").css("color", "red");
-                }
-            });
-        });
+            <div class="px-4">
+                <input type="range" class="custom-slider" id="slice-slider" min="0" max="0" value="0">
+            </div>
 
-        $("#slice-slider").on("input", function () {
-            updateSlice($(this).val());
-        });
+            <div class="display-grid">
+                <div class="slice-card">
+                    <h5>Original FLAIR</h5>
+                    <div class="image-wrapper">
+                        <img id="flair-image" src="" alt="FLAIR Slice">
+                    </div>
+                </div>
+                <div class="slice-card">
+                    <h5>Neural Overlay</h5>
+                    <div class="image-wrapper">
+                        <img id="overlay-image" src="" alt="Overlay Mask">
+                    </div>
+                </div>
+                <div class="slice-card">
+                    <h5>Binary Mask</h5>
+                    <div class="image-wrapper">
+                        <img id="mask-image" src="" alt="Predicted Mask">
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        function updateSlice(index) {
-            $("#slice-number").text(index);
-            $("#flair-image").attr("src", slices[index].flair);
-            $("#overlay-image").attr("src", slices[index].overlay);
-            $("#mask-image").attr("src", slices[index].mask);
+        <div class="advanced-link-card">
+            <div>
+                <h4 class="fw-bold mb-1">Volumetric 3D Analysis</h4>
+                <p class="text-muted mb-0">Experience full spatial context in our proprietary 3D rendering engine.</p>
+            </div>
+            <a href="/advanced" class="btn btn-scan">
+                Open 3D Viewer <i class="bi bi-arrow-right-short ms-1"></i>
+            </a>
+        </div>
+    </section>
+</div>
+
+<footer class="footer mt-5">
+    <div class="container">
+        <p class="mb-0">&copy; 2026 NeuroScan Medical Systems. For research purposes only.</p>
+    </div>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    let slices = [];
+
+    // UI Interactions
+    const dropZone = $('#drop-zone');
+    const fileInput = $('#file-input');
+    const fileNameDisplay = $('#file-name-display');
+
+    dropZone.on('click', () => fileInput.click());
+    
+    fileInput.on('change', function() {
+        if (this.files[0]) {
+            fileNameDisplay.text(`Selected: ${this.files[0].name}`).show();
         }
-    </script>
+    });
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    dropZone.on('dragover', (e) => {
+        e.preventDefault();
+        dropZone.css('border-color', 'var(--primary-glow)');
+    });
+
+    dropZone.on('dragleave', () => {
+        dropZone.css('border-color', 'var(--glass-border)');
+    });
+
+    dropZone.on('drop', (e) => {
+        e.preventDefault();
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length) {
+            fileInput[0].files = files;
+            fileNameDisplay.text(`Selected: ${files[0].name}`).show();
+        }
+    });
+
+    // Form Submission
+    $("#upload-form").submit(function (event) {
+        event.preventDefault();
+        
+        let file = fileInput[0].files[0];
+        if (!file) {
+            $("#result-status").text("Please select a file first.").css("color", "red");
+            return;
+        }
+
+        let formData = new FormData();
+        formData.append("file", file);
+
+        $("#result-status").html('<div class="spinner-border spinner-border-sm text-primary me-2"></div> AI is processing scan...').css("color", "var(--primary-glow)");
+
+        $.ajax({
+            url: "/detect_tumor",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                if (response.error) {
+                    $("#result-status").text("Error: " + response.error).css("color", "red");
+                    return;
+                }
+
+                slices = response.slices;
+                if (slices.length > 0) {
+                    $("#slice-slider").attr("max", slices.length - 1).val(0);
+                    updateSlice(0);
+                    $("#viewer-section").fadeIn(1000);
+                    $("#result-status").html('<i class="bi bi-check-circle-fill me-2"></i> Analysis Complete').css("color", "#00ff88");
+                    
+                    // Smooth scroll to viewer
+                    $('html, body').animate({
+                        scrollTop: $("#viewer-section").offset().top - 100
+                    }, 1000);
+                } else {
+                    $("#result-status").text("No slices could be extracted.").css("color", "red");
+                }
+            },
+            error: function (xhr, status, error) {
+                $("#result-status").text("Processing failed. Server might be under heavy load.").css("color", "red");
+            }
+        });
+    });
+
+    $("#slice-slider").on("input", function () {
+        updateSlice($(this).val());
+    });
+
+    function updateSlice(index) {
+        $("#slice-number").text(index);
+        $("#flair-image").attr("src", slices[index].flair);
+        $("#overlay-image").attr("src", slices[index].overlay);
+        $("#mask-image").attr("src", slices[index].mask);
+    }
+</script>
+
 </body>
-
 </html>

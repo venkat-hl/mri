@@ -6,17 +6,28 @@ import tensorflow as tf
 import keras
 import matplotlib
 import matplotlib.pyplot as plt
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from fastapi import FastAPI, Request, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from werkzeug.utils import secure_filename
+import shutil
 
 # ✅ Prevent Tkinter errors from Matplotlib
 matplotlib.use('Agg')
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads/'
-app.config['OUTPUT_FOLDER'] = 'static/outputs/'
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+app = FastAPI()
+
+UPLOAD_FOLDER = 'uploads/'
+OUTPUT_FOLDER = 'static/outputs/'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+# Mount static and uploads folders
+app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+templates = Jinja2Templates(directory="templates")
 
 # ✅ Model Loading (Only Used for front.html)
 MODEL_PATH = "model_x1_1.h5"
@@ -84,9 +95,9 @@ def process_nii(file_path):
 
         slice_paths = []
         for slice_num in range(slices):
-            flair_path = os.path.join(app.config['OUTPUT_FOLDER'], f"flair_{slice_num}.png")
-            mask_path = os.path.join(app.config['OUTPUT_FOLDER'], f"mask_{slice_num}.png")
-            overlay_path = os.path.join(app.config['OUTPUT_FOLDER'], f"overlay_{slice_num}.png")
+            flair_path = os.path.join(OUTPUT_FOLDER, f"flair_{slice_num}.png")
+            mask_path = os.path.join(OUTPUT_FOLDER, f"mask_{slice_num}.png")
+            overlay_path = os.path.join(OUTPUT_FOLDER, f"overlay_{slice_num}.png")
 
             plt.imsave(flair_path, X[slice_num, :, :, 0], cmap='gray')
             plt.imsave(mask_path, predictions[slice_num], cmap='jet')
@@ -122,9 +133,9 @@ def generate_orthogonal_slices(file_path):
         x_dim, y_dim, z_dim = img_data.shape
         
         # Create directories for different slice types
-        axial_dir = os.path.join(app.config['OUTPUT_FOLDER'], 'axial')
-        coronal_dir = os.path.join(app.config['OUTPUT_FOLDER'], 'coronal')
-        sagittal_dir = os.path.join(app.config['OUTPUT_FOLDER'], 'sagittal')
+        axial_dir = os.path.join(OUTPUT_FOLDER, 'axial')
+        coronal_dir = os.path.join(OUTPUT_FOLDER, 'coronal')
+        sagittal_dir = os.path.join(OUTPUT_FOLDER, 'sagittal')
         
         os.makedirs(axial_dir, exist_ok=True)
         os.makedirs(coronal_dir, exist_ok=True)
@@ -161,18 +172,16 @@ def generate_orthogonal_slices(file_path):
         return None
 
 # ✅ Route for front.html (Runs Model for Tumor Detection)
-@app.route('/detect_tumor', methods=['POST'])
-def detect_tumor():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+@app.post('/detect_tumor')
+async def detect_tumor(file: UploadFile = File(...)):
+    if not file:
+        return JSONResponse({'error': 'No file uploaded'}, status_code=400)
 
     filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(file_path)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     print(f"File received for model processing: {file_path}")
 
@@ -180,23 +189,21 @@ def detect_tumor():
     slices = process_nii(file_path)
 
     if slices:
-        return jsonify({'slices': slices})
+        return JSONResponse({'slices': slices})
     else:
-        return jsonify({'error': 'Failed to process file'}), 500
+        return JSONResponse({'error': 'Failed to process file'}, status_code=500)
 
 # ✅ Route for advanced.html (No Model, Just Upload)
-@app.route('/upload_nii', methods=['POST'])
-def upload_nii():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+@app.post('/upload_nii')
+async def upload_nii(file: UploadFile = File(...)):
+    if not file:
+        return JSONResponse({'error': 'No file uploaded'}, status_code=400)
 
     filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    file.save(file_path)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
     print(f"File received for 3D viewing: {file_path}")
     
@@ -204,51 +211,41 @@ def upload_nii():
     slice_info = generate_orthogonal_slices(file_path)
     
     if slice_info:
-        return jsonify({
+        return JSONResponse({
             'message': 'File uploaded successfully', 
             'file_path': f"/uploads/{filename}",
             'slice_info': slice_info
         })
     else:
-        return jsonify({'error': 'Failed to process file'}), 500
+        return JSONResponse({'error': 'Failed to process file'}, status_code=500)
 
 # ✅ New endpoint to get specific slices
-@app.route('/get_slice/<axis>/<int:index>', methods=['GET'])
-def get_slice(axis, index):
+@app.get('/get_slice/{axis}/{index}')
+async def get_slice(axis: str, index: int):
     try:
         if axis not in ['axial', 'coronal', 'sagittal']:
-            return jsonify({'error': 'Invalid slice type'}), 400
+            return JSONResponse({'error': 'Invalid slice type'}, status_code=400)
             
         slice_path = f"/static/outputs/{axis}/slice_{index}.png"
-        full_path = os.path.join(os.getcwd(), app.config['OUTPUT_FOLDER'], axis, f"slice_{index}.png")
+        full_path = os.path.join(os.getcwd(), OUTPUT_FOLDER, axis, f"slice_{index}.png")
         
         if not os.path.exists(full_path):
-            return jsonify({'error': 'Slice not found'}), 404
+            return JSONResponse({'error': 'Slice not found'}, status_code=404)
             
-        return jsonify({'slice_path': slice_path})
+        return JSONResponse({'slice_path': slice_path})
     except Exception as e:
         print(f"Error fetching slice: {e}")
-        return jsonify({'error': 'Failed to fetch slice'}), 500
+        return JSONResponse({'error': 'Failed to fetch slice'}, status_code=500)
 
 # ✅ Routes for serving pages
-@app.route('/')
-def home():
-    return render_template('front.html')
+@app.get('/')
+async def home(request: Request):
+    return templates.TemplateResponse("front.html", {"request": request})
 
-@app.route('/advanced')
-def advanced():
-    return render_template('advanced.html')
-
-# ✅ Route for serving uploaded files
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-@app.route('/static/outputs/<path:filename>')
-def output_file(filename):
-    # Handle nested directories
-    directory = os.path.join(app.config['OUTPUT_FOLDER'], os.path.dirname(filename))
-    return send_from_directory(directory, os.path.basename(filename))
+@app.get('/advanced')
+async def advanced(request: Request):
+    return templates.TemplateResponse("advanced.html", {"request": request})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=5000)
