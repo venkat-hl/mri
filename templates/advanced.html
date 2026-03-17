@@ -55,6 +55,7 @@
             font-size: 1.25rem;
             background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -132,6 +133,7 @@
             flex: 1;
             background: transparent;
             -webkit-appearance: none;
+            appearance: none;
         }
 
         .custom-slider::-webkit-slider-runnable-track {
@@ -246,7 +248,7 @@
 <div class="container-fluid">
     <nav class="navbar">
         <a class="navbar-brand" href="/">
-            <i class="bi bi-cpu-fill me-2"></i>BRAINTUMOR AI 3D
+            BRAINTUMOR AI 3D
         </a>
         <div class="d-flex align-items-center gap-3">
             <div class="upload-compact">
@@ -341,9 +343,8 @@
         </div>
     </div>
 
-    <div class="status-footer">
-        <div id="status-text">System Status: Ready for Analysis</div>
-        <div>BrainTumor AI Engine v2.1.0-alpha</div>
+    <div class="status-footer text-center d-flex justify-content-center">
+        <div id="status-text">Research purposes only.</div>
     </div>
 </div>
 

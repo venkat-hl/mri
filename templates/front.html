@@ -56,7 +56,7 @@
         }
 
         .hero-section {
-            padding: 80px 0;
+            padding: 60px 0;
             text-align: center;
         }
 
@@ -136,37 +136,90 @@
 
         .results-section {
             display: none;
-            margin-top: 60px;
-            padding-bottom: 60px;
+            margin-top: 40px;
+            padding-bottom: 80px;
         }
 
-        .slice-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-
-        .slice-card {
+        .viewer-container {
             background: var(--surface-color);
+            border-radius: 24px;
+            padding: 40px;
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            overflow: hidden;
-            transition: transform 0.3s ease;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
-        .slice-card:hover { transform: translateY(-5px); }
-
-        .slice-card img {
-            width: 100%;
-            height: auto;
-            background: #000;
-        }
-
-        .slice-label {
-            padding: 12px;
+        .slider-section {
             text-align: center;
-            font-weight: 600;
-            font-size: 0.9rem;
+            margin-bottom: 50px;
+        }
+
+        .slice-slider {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            height: 6px;
+            background: #333;
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .slice-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            background: var(--primary-accent);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
+            border: 3px solid #fff;
+        }
+
+        .viewer-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr 1fr;
+            gap: 30px;
+            align-items: center;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .viewer-box {
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+
+        .viewer-box.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .viewer-box img {
+            width: 100%;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            padding: 5px;
+            background: #0d0e12;
+            margin-top: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        .viewer-box h6 {
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+
+        .overlay-box img {
+            border: 2px solid var(--primary-accent);
+            transform: scale(1.03);
         }
 
         .footer {
@@ -190,13 +243,22 @@
         }
 
         .link-advanced:hover { text-decoration: underline; }
+
+        @media (max-width: 992px) {
+            .viewer-grid {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .overlay-box { transform: scale(1); }
+            .hero-title { font-size: 2.5rem; }
+        }
     </style>
 </head>
 <body>
 
 <nav class="navbar">
     <div class="container d-flex justify-content-between align-items-center">
-        <a class="navbar-brand" href="#"><i class="bi bi-cpu-fill me-2"></i>BRAINTUMOR AI</a>
+        <a class="navbar-brand" href="#">BRAINTUMOR AI</a>
         <a href="/advanced" class="btn btn-outline-light btn-sm px-4">Engine v2.0 Beta</a>
     </div>
 </nav>
@@ -237,19 +299,43 @@
     </section>
 
     <section class="results-section" id="results-section">
-        <div class="d-flex justify-content-between align-items-end mb-4">
-            <h3 class="fw-bold">Detection Results</h3>
-            <span class="text-dim">Slices with detected abnormalities</span>
-        </div>
-        <div class="slice-grid" id="slice-grid">
-            <!-- Slices injected here -->
+        <div class="viewer-container">
+            <div class="slider-section">
+                <h3 class="fw-bold mb-3">Select Slice</h3>
+                <input type="range" class="slice-slider" id="slice-range" min="0" max="0" value="0">
+                <div class="text-primary h5 fw-bold">Slice: <span id="current-slice-num">0</span></div>
+                <p id="completion-msg" class="text-success fw-bold small mt-3" style="display:none;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Tumor detection complete! Use the slider to explore slices.
+                </p>
+            </div>
+
+            <div class="viewer-grid">
+                <div class="viewer-box" id="box-flair">
+                    <h6>FLAIR MRI Slice</h6>
+                    <img id="img-flair" src="" alt="FLAIR MRI Slice">
+                </div>
+                <div class="viewer-box overlay-box" id="box-overlay">
+                    <h6>Overlayed Predicted Mask</h6>
+                    <img id="img-overlay" src="" alt="Overlayed Mask">
+                </div>
+                <div class="viewer-box" id="box-mask">
+                    <h6>Predicted Mask Only</h6>
+                    <img id="img-mask" src="" alt="Predicted Mask">
+                </div>
+            </div>
+            
+            <div class="text-center mt-5">
+                <a href="/advanced" class="btn btn-outline-light px-5 py-2">
+                    Go to Advanced 3D Viewer <i class="bi bi-arrow-right ms-2"></i>
+                </a>
+            </div>
         </div>
     </section>
 </main>
 
 <footer class="footer">
     <div class="container">
-        <p>&copy; 2026 BrainTumor AI Medical Systems. For research purposes only.</p>
+        <p>Research purposes only.</p>
     </div>
 </footer>
 
@@ -259,8 +345,7 @@
         const dropZone = $('#drop-zone');
         const fileInput = $('#file-input');
         const fileName = $('#file-name');
-
-        // fileInput.click is handled by the label 'for' attribute natively
+        let allSlices = [];
 
         fileInput.change(function() {
             if (this.files.length) {
@@ -297,6 +382,7 @@
             $("#loader").show();
             $("#result-status").text("");
             $("#results-section").hide();
+            $(".viewer-box").removeClass('visible');
 
             let formData = new FormData();
             formData.append("file", file);
@@ -310,8 +396,21 @@
                 success: function (response) {
                     $("#loader").hide();
                     if (response.slices && response.slices.length > 0) {
-                        renderResults(response.slices);
-                        $("#result-status").text("Analysis complete.").css("color", "#00d2ff");
+                        allSlices = response.slices;
+                        initSlider(allSlices.length);
+                        updateImages(0);
+                        
+                        $("#results-section").fadeIn(800);
+                        $("#completion-msg").fadeIn();
+                        
+                        setTimeout(() => {
+                            $(".viewer-box").addClass('visible');
+                        }, 200);
+
+                        window.scrollTo({ 
+                            top: $("#results-section").offset().top - 50, 
+                            behavior: 'smooth' 
+                        });
                     } else {
                         $("#result-status").text("No abnormalities detected or processing failed.").css("color", "#ffbb33");
                     }
@@ -324,19 +423,26 @@
             });
         });
 
-        function renderResults(slices) {
-            const grid = $("#slice-grid");
-            grid.empty();
-            slices.forEach((slice, index) => {
-                grid.append(`
-                    <div class="slice-card">
-                        <img src="${slice.overlay}" alt="Tumor Slice ${index + 1}">
-                        <div class="slice-label">Detection Instance #${index + 1}</div>
-                    </div>
-                `);
-            });
-            $("#results-section").fadeIn();
-            window.scrollTo({ top: $("#results-section").offset().top - 100, behavior: 'smooth' });
+        function initSlider(count) {
+            const slider = $('#slice-range');
+            slider.attr('max', count - 1);
+            slider.val(0);
+            $('#current-slice-num').text(0);
+        }
+
+        $('#slice-range').on('input', function() {
+            const index = $(this).val();
+            $('#current-slice-num').text(index);
+            updateImages(index);
+        });
+
+        function updateImages(index) {
+            const slice = allSlices[index];
+            if (slice) {
+                $('#img-flair').attr('src', slice.flair);
+                $('#img-mask').attr('src', slice.mask);
+                $('#img-overlay').attr('src', slice.overlay);
+            }
         }
     });
 </script>

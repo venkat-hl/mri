@@ -1,7 +1,6 @@
 # Binary files
 *.pdf
 *.pptx
-*.h5
 
 # OS generated files
 .DS_Store
@@ -16,11 +15,11 @@ env/
 .env
 
 # Project specific
+app_log.txt
 uploads/*
 !uploads/.gitkeep
 static/outputs/*
 !static/outputs/.gitkeep
-3D_MRI_Brain_tumor_segmentation____U_NET.ipynb
 
 # IDEs
 .vscode/
