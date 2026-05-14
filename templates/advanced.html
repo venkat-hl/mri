@@ -3,476 +3,552 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrainTumor AI | Volumetric 3D Analysis</title>
-    
-    <!-- Fonts -->
+    <title>BrainTumor AI | NiiVue Viewer</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Bootstrap & Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Libre+Baskerville:wght@400;700&family=Lora:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <style>
         :root {
-            --bg-color: #1a1c23;
-            --surface-bg: #242731;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --primary-glow: #00d2ff;
-            --secondary-glow: #3a7bd5;
-            --text-main: #f0f0f0;
-            --text-muted: #a0a0a0;
+            --card: #fffcf5;
+            --ring: #a67c52;
+            --input: #dbd0ba;
+            --muted: #ece5d8;
+            --accent: #d4c8aa;
+            --border: #dbd0ba;
+            --radius: 0.25rem;
+            --chart-1: #a67c52;
+            --chart-2: #8d6e4c;
+            --chart-3: #735a3a;
+            --chart-4: #b3906f;
+            --chart-5: #c0a080;
+            --popover: #fffcf5;
+            --primary: #a67c52;
+            --sidebar: #ece5d8;
+            --font-mono: "IBM Plex Mono", monospace;
+            --font-sans: "Libre Baskerville", serif;
+            --secondary: #e2d8c3;
+            --background: #f5f1e6;
+            --font-serif: "Lora", serif;
+            --foreground: #4a3f35;
+            --destructive: #b54a35;
+            --muted-foreground: #7d6b56;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
             margin: 0;
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top left, rgba(212, 200, 170, 0.58), transparent 28%),
+                linear-gradient(180deg, #f8f3ea 0%, var(--background) 100%);
+            color: var(--foreground);
+            font-family: var(--font-serif);
         }
 
-        .container-fluid {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            padding: 0;
+        .page-shell {
+            width: min(1260px, calc(100% - 28px));
+            margin: 0 auto;
+            padding: 20px 0 28px;
         }
 
-        .navbar {
-            background: rgba(11, 14, 20, 0.8);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 0.75rem 1.5rem;
-            flex-shrink: 0;
-            z-index: 100;
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.25rem;
-            background: linear-gradient(90deg, var(--primary-glow), var(--secondary-glow));
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .main-content {
-            display: flex;
-            flex-grow: 1;
-            overflow: hidden;
-        }
-
-        #three-d-container {
-            flex: 1;
-            background: #000;
-            position: relative;
-        }
-
-        .side-panel {
-            width: 380px;
-            background: var(--surface-bg);
-            border-left: 1px solid var(--glass-border);
-            display: flex;
-            flex-direction: column;
-            padding: 1.5rem;
-            overflow-y: auto;
-            flex-shrink: 0;
-        }
-
-        .control-group {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .group-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--primary-glow);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .group-title i { margin-right: 0.5rem; }
-
-        .slice-preview {
-            width: 100%;
-            height: 180px;
-            background: #000;
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            margin-bottom: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .slice-preview img {
-            max-width: 100%;
-            max-height: 100%;
-            transition: transform 0.3s ease;
-        }
-
-        .slider-wrap {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin: 1rem 0;
-        }
-
-        .custom-slider {
-            flex: 1;
-            background: transparent;
-            -webkit-appearance: none;
-            appearance: none;
-        }
-
-        .custom-slider::-webkit-slider-runnable-track {
-            height: 4px;
-            background: var(--glass-border);
-            border-radius: 2px;
-        }
-
-        .custom-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: var(--primary-glow);
-            margin-top: -6px;
-            cursor: pointer;
-        }
-
-        .slider-val {
-            min-width: 30px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
-        .btn-action {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            font-size: 0.8rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .btn-action:hover {
-            border-color: var(--primary-glow);
-            color: var(--primary-glow);
-        }
-
-        .btn-action.active {
-            background: rgba(0, 210, 255, 0.1);
-            border-color: var(--primary-glow);
-            color: var(--primary-glow);
-        }
-
-        .status-footer {
-            background: #0b0e14;
-            padding: 0.5rem 1.5rem;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+        .topbar {
             display: flex;
             justify-content: space-between;
-            border-top: 1px solid var(--glass-border);
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(166, 124, 82, 0.18);
         }
 
-        .upload-compact {
+        .brand {
+            text-decoration: none;
+            color: var(--foreground);
+            font-family: var(--font-sans);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 1.1rem;
+        }
+
+        .topbar-actions {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
         }
 
-        .upload-compact input[type="file"] {
-            display: none;
+        .btn-ink,
+        .btn-outline-ink {
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
         }
 
-        .btn-upload {
-            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
-            border: none;
-            color: white;
-            font-size: 0.85rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-weight: 600;
+        .btn-ink {
+            border: 1px solid var(--primary);
+            background: var(--primary);
+            color: #fff;
         }
 
-        .btn-home {
+        .btn-outline-ink {
+            border: 1px solid var(--border);
             background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-main);
-            font-size: 0.85rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            text-decoration: none;
-            transition: all 0.3s;
+            color: var(--foreground);
         }
 
-        .btn-home:hover {
-            border-color: var(--primary-glow);
-            color: var(--primary-glow);
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 26px 0 20px;
+            align-items: flex-end;
         }
 
-        .rotate-btn {
-            padding: 2px 8px;
-            background: transparent;
-            border: 1px solid var(--glass-border);
-            color: var(--text-muted);
-            border-radius: 4px;
-            font-size: 0.8rem;
+        .hero h1 {
+            margin: 0 0 10px;
+            font-family: var(--font-sans);
+            font-size: clamp(2rem, 4vw, 3.4rem);
+            line-height: 1.05;
         }
 
-        .rotate-btn:hover {
-            color: var(--primary-glow);
-            border-color: var(--primary-glow);
+        .hero p,
+        .panel-copy,
+        .status-line,
+        .meta-list {
+            color: var(--muted-foreground);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) 360px;
+            gap: 20px;
+        }
+
+        .viewer-shell,
+        .panel {
+            background: rgba(255, 252, 245, 0.88);
+            border: 1px solid rgba(166, 124, 82, 0.16);
+            box-shadow: 0 12px 34px rgba(74, 63, 53, 0.08);
+        }
+
+        .viewer-shell {
+            border-radius: 26px;
+            overflow: hidden;
+            min-height: 720px;
+            position: relative;
+        }
+
+        #niivue-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #171311;
+        }
+
+        .viewer-hint {
+            position: absolute;
+            left: 22px;
+            bottom: 18px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 252, 245, 0.78);
+            border: 1px solid rgba(166, 124, 82, 0.14);
+            font-size: 0.84rem;
+            max-width: 320px;
+        }
+
+        .side-column {
+            display: grid;
+            gap: 16px;
+            align-content: start;
+        }
+
+        .panel {
+            border-radius: 22px;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-family: var(--font-sans);
+            font-size: 1.15rem;
+            margin: 0 0 14px;
+        }
+
+        .section-label {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted-foreground);
+            margin-bottom: 8px;
+        }
+
+        .upload-panel input[type="file"] {
+            width: 100%;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            background: rgba(236, 229, 216, 0.48);
+        }
+
+        .stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .control-btn {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(236, 229, 216, 0.54);
+            color: var(--foreground);
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .control-btn.active,
+        .control-btn:hover {
+            border-color: var(--primary);
+            background: rgba(166, 124, 82, 0.12);
+        }
+
+        .meta-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 10px;
+        }
+
+        .meta-list li {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(236, 229, 216, 0.58);
+        }
+
+        .meta-list strong {
+            color: var(--foreground);
+        }
+
+        .status-box {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(236, 229, 216, 0.58);
+            border: 1px solid rgba(166, 124, 82, 0.14);
+        }
+
+        .status-box.error {
+            color: var(--destructive);
+            border-color: rgba(181, 74, 53, 0.18);
+            background: rgba(181, 74, 53, 0.08);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        @media (max-width: 1080px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .viewer-shell {
+                min-height: 560px;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page-shell {
+                width: min(100% - 16px, 100%);
+            }
+
+            .topbar,
+            .hero {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://get.goxtk.com/xtk_edge.js"></script>
 </head>
 <body>
-
-<div class="container-fluid">
-    <nav class="navbar">
-        <a class="navbar-brand" href="/">
-            BRAINTUMOR AI 3D
-        </a>
-        <div class="d-flex align-items-center gap-3">
-            <div class="upload-compact">
-                <form id="nii-upload-form" class="d-flex gap-2">
-                    <label for="nii-file" class="btn btn-home m-0" style="cursor: pointer;">
-                        <i class="bi bi-folder2-open me-1"></i> Choose .nii
-                    </label>
-                    <input type="file" id="nii-file" name="file" accept=".nii">
-                    <button type="submit" class="btn btn-upload">Analyze 3D</button>
-                </form>
+    <div class="page-shell">
+        <header class="topbar">
+            <a class="brand" href="/">BrainTumor AI</a>
+            <div class="topbar-actions">
+                <a href="/" class="btn btn-outline-ink">Back to dashboard</a>
             </div>
-            <div class="vr mx-2" style="background-color: var(--glass-border); opacity: 0.5;"></div>
-            <a href="/" class="btn-home"><i class="bi bi-house-door me-1"></i> Dashboard</a>
-        </div>
-    </nav>
+        </header>
 
-    <div class="main-content">
-        <div id="three-d-container">
-            <!-- Overlay Loader -->
-            <div id="loader" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); z-index:10; text-align:center;">
-                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
-                <p class="mt-3 fw-bold text-primary">Generating Volume Rendering...</p>
+        <section class="hero">
+            <div>
+                <span class="section-label">NiiVue multiplanar viewer</span>
+                <h1>Interactive MRI review for the demo flow.</h1>
+                <p class="mb-0">
+                    Upload a NIfTI volume to inspect the scan in a dedicated NiiVue viewer with
+                    multiplanar mode, single-plane mode, and 3D rendering controls.
+                </p>
             </div>
-        </div>
+            <div class="status-line" id="page-status">Waiting for a scan upload.</div>
+        </section>
 
-        <div class="side-panel">
-            <!-- Axial View -->
-            <div class="control-group">
-                <div class="group-title">
-                    <i class="bi bi-view-list"></i> Axial Plane
-                    <div class="ms-auto">
-                        <button class="rotate-btn rotate-left" data-target="axial-img">↺</button>
-                        <button class="rotate-btn rotate-right" data-target="axial-img">↻</button>
+        <section class="layout">
+            <div class="viewer-shell">
+                <canvas id="niivue-canvas"></canvas>
+                <div class="viewer-hint">
+                    Drag to pan, scroll to zoom, and use the control buttons to switch between multiplanar and single-view inspection.
+                </div>
+            </div>
+
+            <aside class="side-column">
+                <div class="panel upload-panel">
+                    <span class="section-label">Upload</span>
+                    <h2 class="panel-title">Load a NIfTI scan</h2>
+                    <p class="panel-copy">This page uses the uploaded volume directly in NiiVue instead of the older XTK renderer.</p>
+                    <form id="nii-upload-form" class="stack">
+                        <input type="file" id="nii-file" name="file" accept=".nii,.nii.gz">
+                        <button type="submit" class="btn btn-ink">Load volume</button>
+                    </form>
+                </div>
+
+                <div class="panel">
+                    <span class="section-label">View mode</span>
+                    <h2 class="panel-title">Slice controls</h2>
+                    <div class="button-grid" id="view-mode-buttons">
+                        <button type="button" class="control-btn active" data-mode="multiplanar">Multiplanar</button>
+                        <button type="button" class="control-btn" data-mode="axial">Axial</button>
+                        <button type="button" class="control-btn" data-mode="coronal">Coronal</button>
+                        <button type="button" class="control-btn" data-mode="sagittal">Sagittal</button>
+                        <button type="button" class="control-btn" data-mode="render">3D render</button>
                     </div>
                 </div>
-                <div class="slice-preview">
-                    <img id="axial-img" src="" alt="Axial">
-                </div>
-                <div class="slider-wrap">
-                    <input type="range" class="custom-slider" id="axial-slider" min="0" max="100" value="0">
-                    <span id="axial-value" class="slider-val">0</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn-action w-100 animate-btn" data-target="axial-slider">Animate</button>
-                    <button class="btn-action stop-btn" data-target="axial-slider">Stop</button>
-                </div>
-            </div>
 
-            <!-- Coronal View -->
-            <div class="control-group">
-                <div class="group-title">
-                    <i class="bi bi-grid-3x2"></i> Coronal Plane
-                    <div class="ms-auto">
-                        <button class="rotate-btn rotate-left" data-target="coronal-img">↺</button>
-                        <button class="rotate-btn rotate-right" data-target="coronal-img">↻</button>
+                <div class="panel">
+                    <span class="section-label">Layout</span>
+                    <h2 class="panel-title">Viewer options</h2>
+                    <div class="stack">
+                        <div class="button-grid" id="layout-buttons">
+                            <button type="button" class="control-btn active" data-layout="grid">Grid</button>
+                            <button type="button" class="control-btn" data-layout="column">Column</button>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="crosshair-toggle" checked>
+                            <label class="form-check-label" for="crosshair-toggle">Show crosshair</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="orientation-toggle" checked>
+                            <label class="form-check-label" for="orientation-toggle">Show orientation labels</label>
+                        </div>
                     </div>
                 </div>
-                <div class="slice-preview">
-                    <img id="coronal-img" src="" alt="Coronal">
-                </div>
-                <div class="slider-wrap">
-                    <input type="range" class="custom-slider" id="coronal-slider" min="0" max="100" value="0">
-                    <span id="coronal-value" class="slider-val">0</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn-action w-100 animate-btn" data-target="coronal-slider">Animate</button>
-                    <button class="btn-action stop-btn" data-target="coronal-slider">Stop</button>
-                </div>
-            </div>
 
-            <!-- Sagittal View -->
-            <div class="control-group">
-                <div class="group-title">
-                    <i class="bi bi-layout-split"></i> Sagittal Plane
-                    <div class="ms-auto">
-                        <button class="rotate-btn rotate-left" data-target="sagittal-img">↺</button>
-                        <button class="rotate-btn rotate-right" data-target="sagittal-img">↻</button>
-                    </div>
+                <div class="panel">
+                    <span class="section-label">Metadata</span>
+                    <h2 class="panel-title">Volume details</h2>
+                    <ul class="meta-list" id="metadata-list">
+                        <li><span>Shape</span><strong>Not loaded</strong></li>
+                        <li><span>Voxel spacing</span><strong>Not loaded</strong></li>
+                        <li><span>Data type</span><strong>Not loaded</strong></li>
+                    </ul>
                 </div>
-                <div class="slice-preview">
-                    <img id="sagittal-img" src="" alt="Sagittal">
-                </div>
-                <div class="slider-wrap">
-                    <input type="range" class="custom-slider" id="sagittal-slider" min="0" max="100" value="0">
-                    <span id="sagittal-value" class="slider-val">0</span>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn-action w-100 animate-btn" data-target="sagittal-slider">Animate</button>
-                    <button class="btn-action stop-btn" data-target="sagittal-slider">Stop</button>
-                </div>
-            </div>
-        </div>
+
+                <div class="status-box" id="status-box">No scan loaded yet.</div>
+            </aside>
+        </section>
     </div>
 
-    <div class="status-footer text-center d-flex justify-content-center">
-        <div id="status-text">Research purposes only.</div>
-    </div>
-</div>
+    <script type="module">
+        import { Niivue } from "https://cdn.jsdelivr.net/npm/@niivue/niivue@0.57.0/dist/index.js";
 
-<script>
-    $(document).ready(function () {
-        const animations = {};
-        const rotationDegrees = { 'axial-img': 0, 'coronal-img': 0, 'sagittal-img': 0 };
+        const pageStatus = document.getElementById("page-status");
+        const statusBox = document.getElementById("status-box");
+        const uploadForm = document.getElementById("nii-upload-form");
+        const fileInput = document.getElementById("nii-file");
+        const metadataList = document.getElementById("metadata-list");
+        const viewButtons = document.querySelectorAll("#view-mode-buttons .control-btn");
+        const layoutButtons = document.querySelectorAll("#layout-buttons .control-btn");
+        const crosshairToggle = document.getElementById("crosshair-toggle");
+        const orientationToggle = document.getElementById("orientation-toggle");
 
-        function setStatus(msg, isError = false) {
-            $("#status-text").text(`System Status: ${msg}`).css("color", isError ? "#ff4444" : "var(--text-muted)");
+        const nv = new Niivue({
+            backColor: [0.09, 0.07, 0.06, 1],
+            crosshairColor: [0.86, 0.76, 0.59, 1],
+            textHeight: 0.03,
+            show3Dcrosshair: true
+        });
+
+        nv.attachToCanvas(document.getElementById("niivue-canvas"));
+
+        let currentVolume = null;
+
+        function setStatus(message, isError = false) {
+            pageStatus.textContent = message;
+            statusBox.textContent = message;
+            statusBox.classList.toggle("error", isError);
         }
 
-        // Slider events
-        ['axial', 'coronal', 'sagittal'].forEach(axis => {
-            $(`#${axis}-slider`).on("input", function() {
-                const val = $(this).val();
-                $(`#${axis}-value`).text(val);
-                updateSlice(axis, val);
+        function activateButton(buttons, activeButton) {
+            buttons.forEach((button) => {
+                button.classList.toggle("active", button === activeButton);
             });
-        });
+        }
 
-        // Rotation handles
-        $(".rotate-left, .rotate-right").click(function() {
-            const targetId = $(this).data("target");
-            const isRight = $(this).hasClass("rotate-right");
-            rotationDegrees[targetId] = (rotationDegrees[targetId] + (isRight ? 90 : -90)) % 360;
-            $(`#${targetId}`).css("transform", `rotate(${rotationDegrees[targetId]}deg)`);
-        });
-
-        // Animation logic
-        $(".animate-btn").click(function() {
-            const btn = $(this);
-            const sliderId = btn.data("target");
-            const slider = $("#" + sliderId);
-            
-            if (animations[sliderId]) clearInterval(animations[sliderId]);
-            btn.addClass("active").siblings(".stop-btn").removeClass("active");
-
-            let dir = 1;
-            animations[sliderId] = setInterval(() => {
-                let val = parseInt(slider.val());
-                if (val >= slider.attr("max")) dir = -1;
-                else if (val <= slider.attr("min")) dir = 1;
-                slider.val(val + dir).trigger("input");
-            }, 100);
-            setStatus(`Animating ${sliderId.split('-')[0]} view...`);
-        });
-
-        $(".stop-btn").click(function() {
-            const sliderId = $(this).data("target");
-            clearInterval(animations[sliderId]);
-            delete animations[sliderId];
-            $(this).siblings(".animate-btn").removeClass("active");
-            setStatus("Animation stopped");
-        });
-
-        // NII Upload
-        $("#nii-upload-form").submit(function(e) {
-            e.preventDefault();
-            const file = $("#nii-file")[0].files[0];
-            if (!file) {
-                setStatus("Please select a file", true);
+        function updateMetadata(metadata) {
+            if (!metadata) {
+                metadataList.innerHTML = `
+                    <li><span>Shape</span><strong>Unavailable</strong></li>
+                    <li><span>Voxel spacing</span><strong>Unavailable</strong></li>
+                    <li><span>Data type</span><strong>Unavailable</strong></li>
+                `;
                 return;
             }
 
-            $("#loader").show();
-            setStatus("Uploading and generating slices...");
+            metadataList.innerHTML = `
+                <li><span>Shape</span><strong>${metadata.shape.join(" x ")}</strong></li>
+                <li><span>Voxel spacing</span><strong>${metadata.voxel_spacing.join(" / ")}</strong></li>
+                <li><span>Data type</span><strong>${metadata.dtype}</strong></li>
+            `;
+        }
 
-            const formData = new FormData();
-            formData.append("file", file);
+        async function loadVolume(url) {
+            currentVolume = url;
+            await nv.loadVolumes([
+                {
+                    url,
+                    colormap: "gray",
+                    opacity: 1
+                }
+            ]);
+            nv.setSliceType(nv.sliceTypeMultiplanar);
+            nv.setMultiplanarLayout(2);
+        }
 
-            $.ajax({
-                url: "/upload_nii",
-                type: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(resp) {
-                    $("#loader").hide();
-                    setStatus("Analysis complete. 3D Model loading...");
-                    
-                    if (resp.slice_info) {
-                        const info = resp.slice_info;
-                        Object.keys(info).forEach(axis => {
-                            $(`#${axis}-slider`).attr({
-                                "min": info[axis].min,
-                                "max": info[axis].max,
-                                "value": Math.floor((info[axis].min + info[axis].max) / 2)
-                            }).trigger("input");
-                        });
-                    }
+        function ensureVolumeLoaded() {
+            if (!currentVolume) {
+                setStatus("Upload a scan first.", true);
+                return false;
+            }
+            return true;
+        }
 
-                    if (resp.file_path) {
-                        load3DModel(resp.file_path);
-                    }
-                },
-                error: (err) => {
-                    $("#loader").hide();
-                    setStatus(err.responseJSON?.error || "Processing failed", true);
+        viewButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (!ensureVolumeLoaded()) {
+                    return;
+                }
+
+                const mode = button.dataset.mode;
+                activateButton(viewButtons, button);
+
+                if (mode === "multiplanar") {
+                    nv.setSliceType(nv.sliceTypeMultiplanar);
+                    setStatus("Multiplanar view enabled.");
+                    return;
+                }
+
+                if (mode === "axial") {
+                    nv.setSliceType(nv.sliceTypeAxial);
+                    setStatus("Axial view enabled.");
+                    return;
+                }
+
+                if (mode === "coronal") {
+                    nv.setSliceType(nv.sliceTypeCoronal);
+                    setStatus("Coronal view enabled.");
+                    return;
+                }
+
+                if (mode === "sagittal") {
+                    nv.setSliceType(nv.sliceTypeSagittal);
+                    setStatus("Sagittal view enabled.");
+                    return;
+                }
+
+                if (mode === "render") {
+                    nv.setSliceType(nv.sliceTypeRender);
+                    setStatus("3D render view enabled.");
                 }
             });
         });
 
-        function load3DModel(path) {
-            try {
-                $("#three-d-container").empty();
-                let r = new X.renderer3D();
-                r.container = 'three-d-container';
-                r.init();
+        layoutButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                if (!ensureVolumeLoaded()) {
+                    return;
+                }
 
-                let volume = new X.volume();
-                volume.file = path;
-                r.add(volume);
-                r.render();
-                
-                setStatus("3D Volumetric Model Ready");
-            } catch (e) {
-                console.error(e);
-                setStatus("3D Rendering Error (Check Browser Support)", true);
-            }
-        }
-
-        function updateSlice(axis, index) {
-            $.get(`/get_slice/${axis}/${index}`, (resp) => {
-                if (resp.slice_path) $(`#${axis}-img`).attr("src", resp.slice_path);
+                activateButton(layoutButtons, button);
+                const layout = button.dataset.layout;
+                const nextLayout = layout === "column" ? 1 : 2;
+                nv.setMultiplanarLayout(nextLayout);
+                setStatus(`Layout set to ${layout}.`);
             });
-        }
-    });
-</script>
+        });
+
+        crosshairToggle.addEventListener("change", () => {
+            nv.setCrosshairWidth(crosshairToggle.checked ? 1 : 0);
+            setStatus(crosshairToggle.checked ? "Crosshair enabled." : "Crosshair hidden.");
+        });
+
+        orientationToggle.addEventListener("change", () => {
+            nv.setCornerOrientationText(orientationToggle.checked);
+            setStatus(orientationToggle.checked ? "Orientation labels enabled." : "Orientation labels hidden.");
+        });
+
+        uploadForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const file = fileInput.files[0];
+            if (!file) {
+                setStatus("Select a NIfTI file before loading the viewer.", true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", file);
+            setStatus("Uploading volume...");
+
+            try {
+                const response = await fetch("/upload_nii", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(payload.error || "Upload failed");
+                }
+
+                await loadVolume(payload.file_path);
+                updateMetadata(payload.metadata);
+                activateButton(viewButtons, document.querySelector('[data-mode="multiplanar"]'));
+                activateButton(layoutButtons, document.querySelector('[data-layout="grid"]'));
+                setStatus("Volume loaded into NiiVue.");
+            } catch (error) {
+                console.error(error);
+                setStatus(error.message || "Viewer load failed.", true);
+            }
+        });
+    </script>
 </body>
 </html>

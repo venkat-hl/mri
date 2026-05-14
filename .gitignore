@@ -16,6 +16,8 @@ env/
 
 # Project specific
 app_log.txt
+run.log
+run.err.log
 uploads/*
 !uploads/.gitkeep
 static/outputs/*
