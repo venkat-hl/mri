@@ -14,6 +14,9 @@ venv/
 env/
 .env
 
+# Design handoff (local only)
+design_handoff_braintumor_ai/
+
 # Project specific
 app_log.txt
 run.log

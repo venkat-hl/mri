@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BrainTumor AI</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/design.css">
+
+  <!-- Supabase config injected server-side -->
+  <script>
+    window.SUPABASE_URL  = "{{ supabase_url }}";
+    window.SUPABASE_ANON = "{{ supabase_anon_key }}";
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel (for JSX in the copied design files) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- NiiVue — WebGL NIfTI 3D viewer (served locally) -->
+  <script src="/static/js/niivue.umd.js"></script>
+
+  <!-- Design components (in dependency order) — loaded via Babel transform -->
+  <script type="text/babel" src="/static/js/icons.js"></script>
+  <script type="text/babel" src="/static/js/viewer.js"></script>
+  <script type="text/babel" src="/static/js/ui.js"></script>
+
+  <!-- API layer (plain JS — no JSX) -->
+  <script src="/static/js/api.js"></script>
+  <!-- Real MRI slice viewer (plain JS — no JSX) -->
+  <script src="/static/js/real_viewer.js"></script>
+  <!-- NiiVue 3D viewer wrapper (plain JS — no JSX) -->
+  <script src="/static/js/niivue_viewer.js"></script>
+
+  <!-- Role apps (use window.API instead of window.DB) -->
+  <script type="text/babel" src="/static/js/admin.js"></script>
+  <script type="text/babel" src="/static/js/doctor.js"></script>
+  <script type="text/babel" src="/static/js/patient.js"></script>
+
+  <!-- Root app (real auth) -->
+  <script type="text/babel" src="/static/js/app.js?v=2"></script>
+</body>
+</html>

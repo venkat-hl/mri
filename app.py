@@ -1,19 +1,44 @@
 import io
 import os
 import shutil
+import uuid
 import zipfile
 from datetime import datetime
 from typing import Any
 
-import cv2
-import keras
-import matplotlib
-import matplotlib.pyplot as plt
-import nibabel as nib
+# Must be set before any ML library is imported to prevent TF from loading
+# (TF crashes on arm64 macOS with Python 3.13 due to a mutex bug).
+os.environ.setdefault("USE_TF", "0")
+os.environ.setdefault("USE_TORCH", "1")
+
 import numpy as np
-import tensorflow as tf
+import matplotlib
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Request, UploadFile
+
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+
+try:
+    import matplotlib.pyplot as plt
+except Exception:
+    plt = None
+
+try:
+    import nibabel as nib
+except ImportError:
+    nib = None
+
+try:
+    import keras
+    import tensorflow as tf
+    print(f"TF {tf.__version__} / Keras {keras.__version__} loaded OK")
+except Exception as e:
+    print(f"TF/Keras unavailable: {e}")
+    keras = None
+    tf = None
+from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -24,6 +49,10 @@ load_dotenv()
 
 # Prevent Tkinter issues from Matplotlib.
 matplotlib.use("Agg")
+
+# Auth + DB (imported after load_dotenv so env vars are set)
+from auth import get_current_user, require_role  # noqa: E402
+from db import supabase_admin  # noqa: E402
 
 try:
     from transformers import pipeline
@@ -36,6 +65,17 @@ except ImportError:
     Groq = None
 
 app = FastAPI()
+
+# Mount route modules
+from routes.patients import router as patients_router  # noqa: E402
+from routes.scans import router as scans_router  # noqa: E402
+from routes.documents import router as documents_router  # noqa: E402
+from routes.chat import router as chat_router  # noqa: E402
+
+app.include_router(patients_router)
+app.include_router(scans_router)
+app.include_router(documents_router)
+app.include_router(chat_router)
 
 UPLOAD_FOLDER = "uploads"
 OUTPUT_FOLDER = os.path.join("static", "outputs")
@@ -83,6 +123,9 @@ def sanitize_upload_name(filename: str | None) -> str:
 
 
 def load_segmentation_model():
+    if not keras or not tf:
+        print("Segmentation model skipped: keras/tensorflow unavailable on this platform")
+        return None
     print(f"Loading segmentation model from: {MODEL_PATH}")
     try:
         return keras.models.load_model(
@@ -296,6 +339,9 @@ Classifier result:
 
 
 def preprocess_volume(file_path: str) -> tuple[np.ndarray | None, np.ndarray | None]:
+    if not nib or not cv2:
+        print("preprocess_volume skipped: nibabel/cv2 unavailable")
+        return None, None
     try:
         flair = nib.load(file_path).get_fdata()
         slices = flair.shape[2]
@@ -330,8 +376,49 @@ def get_segmentation_predictions(model_input: np.ndarray) -> np.ndarray | None:
         return None
 
 
-def process_nii(file_path: str) -> dict[str, Any] | None:
-    clear_output_folder()
+def extract_slices_nibabel(file_path: str, scan_id: str) -> list[dict]:
+    """Extract real MRI slices into static/outputs/{scan_id}/ using nibabel + matplotlib."""
+    if not nib or not plt:
+        return []
+    try:
+        out_dir = os.path.join(OUTPUT_FOLDER, scan_id)
+        os.makedirs(out_dir, exist_ok=True)
+        vol = nib.load(file_path).get_fdata()
+        num_slices = vol.shape[2]
+        indices = list(range(0, num_slices, max(1, num_slices // 80)))[:80]
+        paths = []
+        for idx, i in enumerate(indices):
+            sl = vol[:, :, i]
+            vmin, vmax = float(np.min(sl)), float(np.max(sl))
+            norm = (sl - vmin) / (vmax - vmin) if vmax > vmin else np.zeros_like(sl)
+            flair_path = os.path.join(out_dir, f"flair_{idx:03d}.png")
+            plt.imsave(flair_path, norm, cmap="gray")
+            paths.append({
+                "flair": f"/static/outputs/{scan_id}/flair_{idx:03d}.png",
+                "overlay": f"/static/outputs/{scan_id}/flair_{idx:03d}.png",
+                "slice_index": i,
+            })
+        print(f"Extracted {len(paths)} slices → static/outputs/{scan_id}/")
+        return paths
+    except Exception as exc:
+        print(f"Slice extraction failed: {exc}")
+        return []
+
+
+def process_nii(file_path: str, scan_id: str = "tmp") -> dict[str, Any] | None:
+    # Always extract real slices using nibabel (works without TF)
+    slice_paths = extract_slices_nibabel(file_path, scan_id)
+
+    # ML pipeline (segmentation + classification) requires TF/Keras
+    if not tf or not keras:
+        summary, summary_source = generate_groq_summary({}, None)
+        return {
+            "slices": slice_paths,
+            "metrics": None,
+            "classification": {"available": False, "error": "Segmentation model unavailable (TF/Keras not installed)."},
+            "summary": summary,
+            "summary_source": summary_source,
+        }
 
     volume_batch, model_input = preprocess_volume(file_path)
     if volume_batch is None or model_input is None:
@@ -339,9 +426,10 @@ def process_nii(file_path: str) -> dict[str, Any] | None:
 
     predictions = get_segmentation_predictions(model_input)
     if predictions is None:
-        return None
+        return {"slices": slice_paths, "metrics": None, "classification": None, "summary": "Segmentation failed.", "summary_source": "local"}
 
-    slice_paths = []
+    # Add overlay images on top of already-extracted slices
+    overlay_paths = []
     for slice_num in range(predictions.shape[0]):
         flair_path = os.path.join(OUTPUT_FOLDER, f"flair_{slice_num}.png")
         mask_path = os.path.join(OUTPUT_FOLDER, f"mask_{slice_num}.png")
@@ -357,20 +445,18 @@ def process_nii(file_path: str) -> dict[str, Any] | None:
         plt.savefig(overlay_path, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
 
-        slice_paths.append(
-            {
-                "flair": f"/static/outputs/flair_{slice_num}.png",
-                "mask": f"/static/outputs/mask_{slice_num}.png",
-                "overlay": f"/static/outputs/overlay_{slice_num}.png",
-            }
-        )
+        overlay_paths.append({
+            "flair": f"/static/outputs/flair_{slice_num}.png",
+            "mask": f"/static/outputs/mask_{slice_num}.png",
+            "overlay": f"/static/outputs/overlay_{slice_num}.png",
+        })
 
     metrics = calculate_metrics(predictions)
     classification = build_classification_result(volume_batch, predictions)
     summary, summary_source = generate_groq_summary(metrics or {}, classification)
 
     return {
-        "slices": slice_paths,
+        "slices": overlay_paths,
         "metrics": metrics,
         "classification": classification,
         "summary": summary,
@@ -394,26 +480,84 @@ def extract_volume_metadata(file_path: str) -> dict[str, Any] | None:
 
 
 @app.post("/detect_tumor")
-async def detect_tumor(file: UploadFile = File(...)):
+async def detect_tumor(
+    file: UploadFile = File(...),
+    patient_id: str = Form(None),
+    user: dict = Depends(require_role("admin")),
+):
+    print(f"[detect_tumor] user={user}")
     if not file:
         return JSONResponse({"error": "No file uploaded"}, status_code=400)
 
+    scan_id = str(uuid.uuid4())
+
+    # Organise storage: uploads/{patient_id}/{scan_id}/  or  uploads/unassigned/{scan_id}/
+    sub_dir = patient_id if patient_id else "unassigned"
+    scan_dir = os.path.join(UPLOAD_FOLDER, sub_dir, scan_id)
+    os.makedirs(scan_dir, exist_ok=True)
+
     filename = sanitize_upload_name(file.filename)
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(scan_dir, filename)
 
     try:
         content = await file.read()
         with open(file_path, "wb") as buffer:
             buffer.write(content)
 
-        result = process_nii(file_path)
+        result = process_nii(file_path, scan_id)
         if not result:
             return JSONResponse({"error": "Failed to process file"}, status_code=500)
 
         latest_analysis.clear()
         latest_analysis.update(result)
 
-        return JSONResponse(result)
+        # Persist to Supabase if a patient_id was provided
+        if patient_id and supabase_admin:
+            try:
+                nii_url = "/" + file_path.replace("\\", "/")
+                scan_resp = supabase_admin.table("scans").insert({
+                    "id": scan_id,
+                    "patient_id": patient_id,
+                    "uploaded_by": user["id"],
+                    "file_path": file_path,
+                    "nii_url": nii_url,
+                    "modality": "MRI",
+                    "status": "complete",
+                }).execute()
+
+                metrics = result.get("metrics") or {}
+                classification = result.get("classification") or {}
+                structured_findings = {
+                    "findings": f"Tumor coverage {metrics.get('tumor_percentage', 0)}%.",
+                    "impression": result.get("summary", ""),
+                    "recommendation": "Correlate with clinical presentation.",
+                    "risk": "high" if (metrics.get("tumor_percentage") or 0) > 5 else "low",
+                    "classes": classification.get("predictions", []),
+                    "metrics": metrics,
+                    "slice_count": len(result.get("slices", [])),
+                    "slice_base": f"/static/outputs/{scan_id}/",
+                }
+
+                supabase_admin.table("analysis_results").insert({
+                    "scan_id": scan_id,
+                    "segmentation_metrics": metrics,
+                    "classifier_label": classification.get("top_label"),
+                    "confidence": classification.get("confidence"),
+                    "ai_summary": result.get("summary"),
+                    "structured_findings": structured_findings,
+                    "model_version": f"seg:v1/{classification.get('model_id','?')}",
+                }).execute()
+
+                supabase_admin.table("patients").update({"risk": structured_findings["risk"]}).eq("id", patient_id).execute()
+                supabase_admin.table("audit_logs").insert({
+                    "user_id": user["id"],
+                    "action": "scan.upload",
+                    "resource": f"scan:{scan_id}",
+                }).execute()
+            except Exception as db_exc:
+                print(f"DB persist failed (non-fatal): {db_exc}")
+
+        return JSONResponse({**result, "scan_id": scan_id})
     except Exception as exc:
         print(f"detect_tumor failed: {exc}")
         return JSONResponse({"error": str(exc)}, status_code=500)
@@ -488,14 +632,30 @@ async def get_summary():
     )
 
 
+@app.get("/api/me")
+async def get_me(user: dict = Depends(get_current_user)) -> dict:
+    """Return the current user's profile (used by the SPA on load)."""
+    return user
+
+
 @app.get("/")
 async def home(request: Request):
-    return templates.TemplateResponse("front.html", {"request": request})
+    """Serve the new React SPA."""
+    return templates.TemplateResponse(request, "index.html", {
+        "supabase_url": os.getenv("SUPABASE_URL", ""),
+        "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY", ""),
+    })
+
+
+@app.get("/legacy")
+async def legacy_home(request: Request):
+    """Keep the old UI accessible at /legacy."""
+    return templates.TemplateResponse(request, "front.html", {})
 
 
 @app.get("/advanced")
 async def advanced(request: Request):
-    return templates.TemplateResponse("advanced.html", {"request": request})
+    return templates.TemplateResponse(request, "advanced.html", {})
 
 
 if __name__ == "__main__":
